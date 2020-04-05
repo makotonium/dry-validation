@@ -167,6 +167,64 @@ RSpec.describe Dry::Validation::Contract, ".rule" do
     end
   end
 
+  context 'when schema is nested and reused' do
+    let(:contract_class) do
+      Class.new(Dry::Validation::Contract) do
+        def self.name
+          "TestContract"
+        end
+
+        UserSchema = Dry::Schema.Params do
+          required(:email).filled(:string)
+          optional(:login).filled(:string)
+          optional(:details).hash do
+            optional(:address).hash do
+              required(:street).value(:string)
+            end
+          end
+        end
+
+        IdentiferSchema = Dry::Schema.Params do
+          required(:external_id).filled(:string)
+        end
+
+        UserRequestSchema = Dry::Schema.Params do
+          required(:user).hash do
+            IdentiferSchema
+            UserSchema
+          end
+        end
+
+        params(UserRequestSchema)
+      end
+    end
+
+    context 'when the rule being applied to a key is in a reused nested schema' do
+      before do
+        contract_class.rule(:login) do
+          key.failure("is too short") if values[:login].size < 3
+        end
+      end
+
+      it 'applies the rule when passed schema checks' do
+        expect(contract.(email: "jane@doe.org", login: "ab").errors.to_h)
+          .to eql(login: ["is too short"])
+      end
+    end
+
+    context 'when schema has no rules' do
+      let(:request) { { user: { external_id: '12345abc', email: "jane@doe.org" } } }
+
+      it 'validates as successful' do
+        expect(contract.(request).success?).to eq true
+      end
+    end
+  end
+
+  context 'when rule being applied to a key from a reused schema' do
+
+  end
+
   describe "abstract contract" do
     let(:abstract_contract) do
       Class.new(Dry::Validation::Contract) do
