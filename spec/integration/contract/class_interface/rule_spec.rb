@@ -184,20 +184,15 @@ RSpec.describe Dry::Validation::Contract, ".rule" do
           end
         end
 
-        IdentiferSchema = Dry::Schema.Params do
+        IdentifierSchema = Dry::Schema.Params do
           required(:external_id).filled(:string)
+          optional(:aternate_id).maybe(:string)
         end
 
         UserRequestSchema = Dry::Schema.Params do
           required(:user).hash do
-            required(:external_id).filled(:string)
-            required(:email).filled(:string)
-            optional(:login).filled(:string)
-            optional(:details).hash do
-              optional(:address).hash do
-                required(:street).value(:string)
-              end
-            end
+            IdentifierSchema
+            UserSchema
           end
         end
 
