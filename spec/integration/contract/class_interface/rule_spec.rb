@@ -190,8 +190,14 @@ RSpec.describe Dry::Validation::Contract, ".rule" do
 
         UserRequestSchema = Dry::Schema.Params do
           required(:user).hash do
-            IdentiferSchema
-            UserSchema
+            required(:external_id).filled(:string)
+            required(:email).filled(:string)
+            optional(:login).filled(:string)
+            optional(:details).hash do
+              optional(:address).hash do
+                required(:street).value(:string)
+              end
+            end
           end
         end
 
@@ -200,20 +206,22 @@ RSpec.describe Dry::Validation::Contract, ".rule" do
     end
 
     context 'when the rule being applied to a key is in a reused nested schema' do
+      let(:request) { { user: { external_id: '12345abc', email: 'jane@doe.org', login: 'ab'} }}
+
       before do
-        contract_class.rule(:login) do
-          key.failure("is too short") if values[:login].size < 3
+        contract_class.rule(user: :login) do
+          key.failure("is too short") if values[user: :login].size < 3
         end
       end
 
       it 'applies the rule when passed schema checks' do
-        expect(contract.(email: "jane@doe.org", login: "ab").errors.to_h)
-          .to eql(login: ["is too short"])
+        expect(contract.(request).errors.to_h)
+          .to eql(user: { login: ["is too short"] })
       end
     end
 
     context 'when schema has no rules' do
-      let(:request) { { user: { external_id: '12345abc', email: "jane@doe.org" } } }
+      let(:request) { { user: { external_id: '12345abc', email: 'jane@doe.org' } } }
 
       it 'validates as successful' do
         expect(contract.(request).success?).to eq true
